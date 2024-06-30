@@ -2,12 +2,12 @@
 
 REPO_DIR="$(cd "$(dirname ${BASH_SOURCE[0]})/../../.." ; pwd -P)"
 
-if [ "$1"x = "topics"x ]; then
-    kubectl apply -f - <<EOF
+function apply_job() {
+  kubectl apply -f - <<EOF
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: topics
+  name: clusters-$2-$3
   namespace: maestro
 spec:
   template:
@@ -19,8 +19,9 @@ spec:
         args:
           - "/maestroperf"
           - "prepare"
-          - "--only-topics"
-          - "--v=4"
+          - "--cluster-begin-index=$2"
+          - "--cluster-counts=$3"
+          - "--only-works=$1"
         volumeMounts:
         - mountPath: "/configs/kafka"
           name: maestro-kafka-config
@@ -36,21 +37,27 @@ spec:
           secretName: kafka-client-certs
   backoffLimit: 4
 EOF
+}
 
-    exit $?
-fi
+# start helper command
 
 if [ "$1"x = "clusters"x ]; then
-    exit
+  echo "create $3 clusters from index $2"
+  apply_job "false" $2 $3
+  exit
 fi
 
 if [ "$1"x = "clusters-with-works"x ]; then
-    exit
+  echo "create $3 clusters with works from index $2"
+  apply_job "false" $2 $3
+  exit
 fi
 
 if [ "$1"x = "works"x ]; then
-    exit
+  echo "create works from maestro-cluster-$2 to maestro-cluster-$[$2+$3 - 1]"
+  apply_job "true" $2 $3
+  exit
 fi
 
-echo "Unknown command \"$1\""
+echo "Unsupported command: $1"
 exit 1

@@ -103,7 +103,6 @@ func (o *PreparerOptions) PrepareClusters(ctx context.Context) error {
 	index := o.ClusterBeginIndex
 	startTime := time.Now()
 	for i := 0; i < o.ClusterCounts; i++ {
-		index = index + 1
 		clusterName := util.ClusterName(index)
 
 		startTime := time.Now()
@@ -111,14 +110,15 @@ func (o *PreparerOptions) PrepareClusters(ctx context.Context) error {
 			return err
 		}
 
-		klog.V(4).Infof("cluster %s is created, time=%dms", clusterName, util.UsedTime(startTime, time.Millisecond))
+		klog.Infof("cluster %s is created, time=%dms", clusterName, util.UsedTime(startTime, time.Millisecond))
 
 		startTime = time.Now()
 		if err := mqAuthzCreator.CreateAuthorizations(ctx, clusterName); err != nil {
 			return err
 		}
-		klog.V(4).Infof("the kafka auth is prepared for cluster %s, time=%dms",
+		klog.Infof("the kafka auth is prepared for cluster %s, time=%dms",
 			clusterName, util.UsedTime(startTime, time.Millisecond))
+		index = index + 1
 	}
 	klog.Infof("Clusters (%d) are created, time=%sms", o.ClusterCounts, util.UsedTime(startTime, time.Millisecond))
 	return nil
@@ -141,8 +141,8 @@ func (o *PreparerOptions) CreateWorks(ctx context.Context, workType string) erro
 	total := 0
 	startTime := time.Now()
 	for i := 0; i < o.ClusterCounts; i++ {
-		index = index + 1
 		clusterName := util.ClusterName(index)
+
 		works, err := workloads.ToManifestWorks(clusterName, workType)
 		if err != nil {
 			return err
@@ -159,13 +159,14 @@ func (o *PreparerOptions) CreateWorks(ctx context.Context, workType string) erro
 				return err
 			}
 
-			klog.V(4).Infof("the work %s/%s is created, time=%dms",
+			klog.Infof("the work %s/%s is created, time=%dms",
 				work.Namespace, work.Name, util.UsedTime(startTime, time.Millisecond))
 			total = total + 1
 		}
 
-		klog.V(4).Infof("the works are created for cluster %s, time=%dms",
+		klog.Infof("the works are created for cluster %s, time=%dms",
 			clusterName, util.UsedTime(startTime, time.Millisecond))
+		index = index + 1
 	}
 
 	klog.Infof("Works (%d) are created, time=%dms", total, util.UsedTime(startTime, time.Millisecond))
