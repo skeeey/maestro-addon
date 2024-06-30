@@ -7,7 +7,7 @@ function apply_job() {
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: clusters-$2-$3
+  name: clusters-$3-$4
   namespace: maestro
 spec:
   template:
@@ -19,8 +19,9 @@ spec:
         args:
           - "/maestroperf"
           - "prepare"
-          - "--cluster-begin-index=$2"
-          - "--cluster-counts=$3"
+          - "--cluster-begin-index=$3"
+          - "--cluster-counts=$4"
+          - "--cluster-with-works=$2"
           - "--only-works=$1"
         volumeMounts:
         - mountPath: "/configs/kafka"
@@ -43,19 +44,19 @@ EOF
 
 if [ "$1"x = "clusters"x ]; then
   echo "create $3 clusters from index $2"
-  apply_job "false" $2 $3
+  apply_job "false" "false" $2 $3
   exit
 fi
 
 if [ "$1"x = "clusters-with-works"x ]; then
   echo "create $3 clusters with works from index $2"
-  apply_job "false" $2 $3
+  apply_job "false" "true" $2 $3
   exit
 fi
 
 if [ "$1"x = "works"x ]; then
   echo "create works from maestro-cluster-$2 to maestro-cluster-$[$2+$3 - 1]"
-  apply_job "true" $2 $3
+  apply_job "true" "false" $2 $3
   exit
 fi
 

@@ -120,16 +120,17 @@ func (o *PreparerOptions) PrepareClusters(ctx context.Context) error {
 			clusterName, util.UsedTime(startTime, time.Millisecond))
 		index = index + 1
 	}
-	klog.Infof("Clusters (%d) are created, time=%sms", o.ClusterCounts, util.UsedTime(startTime, time.Millisecond))
+	klog.Infof("Clusters (%d) are created, time=%dms", o.ClusterCounts, util.UsedTime(startTime, time.Millisecond))
 	return nil
 }
 
 func (o *PreparerOptions) CreateWorks(ctx context.Context, workType string) error {
-	creator, err := work.NewClientHolderBuilder(grpc.GRPCOptions{URL: o.GRPCServiceAddress}).
+	creator, err := work.NewClientHolderBuilder(&grpc.GRPCOptions{URL: o.GRPCServiceAddress}).
 		WithClientID(fmt.Sprintf("%s-client", sourceID)).
 		WithSourceID(sourceID).
 		WithCodecs(codec.NewManifestBundleCodec()).
 		WithWorkClientWatcherStore(store.NewCreateOnlyWatcherStore()).
+		WithResyncEnabled(false).
 		NewSourceClientHolder(ctx)
 	if err != nil {
 		return err
