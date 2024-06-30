@@ -14,6 +14,6 @@ RUN GOOS=${OS} \
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
 ENV USER_UID=10001
 
-COPY --from=builder /go/src/github.com/stolostron/maestro-addon/maestroaddon /
+COPY --from=builder /go/src/github.com/stolostron/maestro-addon/maestroperf /
 
 USER ${USER_UID}
