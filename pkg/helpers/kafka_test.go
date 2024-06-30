@@ -82,7 +82,7 @@ func TestToKafkaPrincipal(t *testing.T) {
 		"O=system:authenticated+O=system:open-cluster-management:addon:maestro-addon+" +
 		"O=system:open-cluster-management:cluster:cluster1:addon:maestro-addon"
 
-	if toKafkaPrincipal("cluster1") != expected {
-		t.Errorf("unexpected principal: %s", toKafkaPrincipal("cluster1"))
+	if ToKafkaPrincipal("cluster1") != expected {
+		t.Errorf("unexpected principal: %s", ToKafkaPrincipal("cluster1"))
 	}
 }

@@ -99,7 +99,7 @@ func createKafkaTopics(ctx context.Context, adminClient KafkaAdminClient, newTop
 func createKafkaACLs(ctx context.Context, adminClient KafkaAdminClient, clusterName string, topics ...string) error {
 	logger := klog.FromContext(ctx)
 
-	principal := toKafkaPrincipal(clusterName)
+	principal := ToKafkaPrincipal(clusterName)
 
 	expectedACLBindings := []kafka.ACLBinding{{
 		Type:                kafka.ResourceGroup,
@@ -199,7 +199,7 @@ func kafkaClusterTopics(sourceID, clusterName string) []string {
 	}
 }
 
-func toKafkaPrincipal(clusterName string) string {
+func ToKafkaPrincipal(clusterName string) string {
 	commonName := fmt.Sprintf("system:open-cluster-management:cluster:%s:addon:%s:agent:%s-agent",
 		clusterName, common.AddOnName, common.AddOnName)
 	authGroup := "system:authenticated"

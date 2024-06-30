@@ -1,0 +1,23 @@
+# Default values for maestro.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+global:
+  imageOverrides:
+    maestroImage: quay.io/redhat-user-workloads/crt-redhat-acm-tenant/maestro-main/maestro-main:cd7e4824867a6bba4dd7bd75df106fa6b0f9157d
+    postgresImage: docker.io/library/postgres:14.2
+  imagePullPolicy: IfNotPresent
+  pullSecret: ""
+  namespace: maestro
+
+maestro:
+  replicas: 1
+  logLevel: 2
+
+messageQueue:
+  amqStreams:
+    name: "kafka"
+    namespace: "amq-streams"
+    listener:
+      type: "route"
+      port: 443
