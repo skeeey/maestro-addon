@@ -24,7 +24,7 @@ import (
 const (
 	sourceID                     = "maestro-performance-test"
 	defaultMaestroServiceAddress = "http://maestro:8000"
-	defaultMaestroGRPCAddress    = "http://maestro:8090"
+	defaultMaestroGRPCAddress    = "maestro-grpc:8090"
 )
 
 type PreparerOptions struct {
