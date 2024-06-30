@@ -43,10 +43,11 @@ type PreparerOptions struct {
 
 func NewPreparerOptions() *PreparerOptions {
 	return &PreparerOptions{
-		MaestroServiceAddress: defaultMaestroServiceAddress,
-		GRPCServiceAddress:    defaultMaestroGRPCAddress,
-		ClusterBeginIndex:     0,
-		ClusterCounts:         1,
+		MaestroServiceAddress:        defaultMaestroServiceAddress,
+		GRPCServiceAddress:           defaultMaestroGRPCAddress,
+		MessageQueueBrokerConfigPath: "/configs/kafka/config.yaml",
+		ClusterBeginIndex:            0,
+		ClusterCounts:                1,
 	}
 }
 

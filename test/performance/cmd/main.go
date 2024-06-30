@@ -60,7 +60,7 @@ func newPreparationCommand() *cobra.Command {
 			}()
 
 			if err := o.Run(ctx); err != nil {
-				klog.Errorf("failed to run test, %v", err)
+				klog.Errorf("failed to run prepare, %v", err)
 			}
 		},
 	}
@@ -87,7 +87,7 @@ func newWatchCommand() *cobra.Command {
 			}()
 
 			if err := o.Run(ctx); err != nil {
-				klog.Errorf("failed to run test, %v", err)
+				klog.Errorf("failed to run watch, %v", err)
 			}
 
 			<-ctx.Done()
@@ -116,7 +116,7 @@ func newSpokeCommand() *cobra.Command {
 			}()
 
 			if err := o.Run(ctx); err != nil {
-				klog.Errorf("failed to run test, %v", err)
+				klog.Errorf("failed to run spoke, %v", err)
 			}
 
 			<-ctx.Done()

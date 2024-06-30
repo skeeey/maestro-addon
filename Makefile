@@ -5,7 +5,7 @@ container_tool?=podman
 IMAGE_REGISTRY?=quay.io/stolostron
 IMAGE_TAG?=latest
 IMAGE_NAME?=$(IMAGE_REGISTRY)/maestro-addon:$(IMAGE_TAG)
-PERFORMANCE_TOOL_IMAGE_NAME?=$(IMAGE_REGISTRY)/maestro-per-tool:$(IMAGE_TAG)
+PERFORMANCE_TOOL_IMAGE_NAME?=$(IMAGE_REGISTRY)/maestro-perf-tool:$(IMAGE_TAG)
 
 GOLANGCI_LINT_VERSION=v1.54.1
 
