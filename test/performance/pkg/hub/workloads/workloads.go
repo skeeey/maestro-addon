@@ -1,15 +1,13 @@
 package workloads
 
 import (
-	"bytes"
 	"embed"
 	"fmt"
-	"text/template"
 
+	"github.com/stolostron/maestro-addon/test/performance/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/rand"
-	"sigs.k8s.io/yaml"
 
 	workv1 "open-cluster-management.io/api/work/v1"
 )
@@ -35,7 +33,12 @@ func ToManifestWorks(clusterName string, workType string) ([]*workv1.ManifestWor
 	works := []*workv1.ManifestWork{}
 
 	for _, file := range workloadFiles {
-		raw, err := render(file, &RenderConfig{
+		data, err := ManifestFiles.ReadFile(file)
+		if err != nil {
+			return nil, err
+		}
+
+		raw, err := util.Render(file, data, &RenderConfig{
 			WorkName:    fmt.Sprintf("%s-%s", clusterName, workType),
 			ClusterName: clusterName,
 		})
@@ -62,23 +65,4 @@ func ToManifestWorks(clusterName string, workType string) ([]*workv1.ManifestWor
 	}
 
 	return works, nil
-}
-
-func render(file string, config interface{}) ([]byte, error) {
-	data, err := ManifestFiles.ReadFile(file)
-	if err != nil {
-		return nil, err
-	}
-
-	tmpl, err := template.New(file).Parse(string(data))
-	if err != nil {
-		return nil, err
-	}
-
-	var buf bytes.Buffer
-	if err := tmpl.Execute(&buf, config); err != nil {
-		return nil, err
-	}
-
-	return yaml.YAMLToJSON(buf.Bytes())
 }

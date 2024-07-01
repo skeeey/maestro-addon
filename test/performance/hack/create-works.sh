@@ -42,18 +42,6 @@ EOF
 
 # start helper command
 
-if [ "$1"x = "clusters"x ]; then
-  echo "create $3 clusters from index $2"
-  apply_job "clusters" "false" "false" $2 $3
-  exit
-fi
-
-if [ "$1"x = "clusters-with-works"x ]; then
-  echo "create $3 clusters with works from index $2"
-  apply_job "clusters" "false" "true" $2 $3
-  exit
-fi
-
 if [ "$1"x = "works"x ]; then
   echo "create works from maestro-cluster-$2 to maestro-cluster-$[$2+$3 - 1]"
   apply_job "works" "true" "false" $2 $3

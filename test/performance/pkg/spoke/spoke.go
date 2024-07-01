@@ -6,6 +6,8 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"embed"
+	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"math/big"
@@ -23,11 +25,17 @@ import (
 
 	"gopkg.in/yaml.v2"
 
+	ocmfeature "open-cluster-management.io/api/feature"
+
 	commonoptions "open-cluster-management.io/ocm/pkg/common/options"
+	"open-cluster-management.io/ocm/pkg/features"
 	"open-cluster-management.io/ocm/pkg/work/spoke"
 
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -39,10 +47,18 @@ const (
 	RSAPrivateKeyBlockType = "RSA PRIVATE KEY"
 )
 
+const jobFile = "manifests/job.yaml"
+
+//go:embed manifests
+var ManifestFiles embed.FS
+
 type SpokeOptions struct {
 	AgentConfigDir string
 
-	KubeConfigPath string
+	HubKubeConfigPath   string
+	SpokeKubeConfigPath string
+
+	MaestroNamespace string
 
 	KafkaServer          string
 	KafkaClusterCAPath   string
@@ -51,10 +67,12 @@ type SpokeOptions struct {
 
 	ClusterBeginIndex int
 	ClusterCounts     int
+	ClusterWithWorks  bool
 }
 
 func NewSpokeOptions() *SpokeOptions {
 	return &SpokeOptions{
+		MaestroNamespace:  "maestro",
 		ClusterBeginIndex: 0,
 		ClusterCounts:     1,
 	}
@@ -62,36 +80,70 @@ func NewSpokeOptions() *SpokeOptions {
 
 func (o *SpokeOptions) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.AgentConfigDir, "agent-config-dir", o.AgentConfigDir, "The dir to save the agent configs")
-	fs.StringVar(&o.KubeConfigPath, "kubeconfig", o.KubeConfigPath, "Location of the kubeconfig")
+	fs.StringVar(&o.HubKubeConfigPath, "hub-kubeconfig", o.HubKubeConfigPath, "Location of the Hub kubeconfig")
+	fs.StringVar(&o.SpokeKubeConfigPath, "spoke-kubeconfig", o.SpokeKubeConfigPath, "Location of the Spoke kubeconfig")
 	fs.StringVar(&o.KafkaServer, "kafka-server", o.KafkaServer, "Address of the kafka server")
 	fs.StringVar(&o.KafkaClusterCAPath, "kafka-cluster-ca", o.KafkaClusterCAPath, "Location of the Kafka cluster CA")
 	fs.StringVar(&o.KafkaClientCAPath, "kafka-client-ca", o.KafkaClientCAPath, "Location of the Kafka client CA")
 	fs.StringVar(&o.KafkaClientCAKeyPath, "kafka-client-ca-key", o.KafkaClientCAKeyPath, "Location of the Kafka client CA Key")
 	fs.IntVar(&o.ClusterBeginIndex, "cluster-begin-index", o.ClusterBeginIndex, "Begin index of the clusters")
 	fs.IntVar(&o.ClusterCounts, "cluster-counts", o.ClusterCounts, "Counts of the clusters")
+	fs.BoolVar(&o.ClusterWithWorks, "cluster-with-works", o.ClusterWithWorks, "Create cluster with initialized works")
 }
 
 func (o *SpokeOptions) Run(ctx context.Context) error {
-	kubeConfig, err := clientcmd.BuildConfigFromFlags("", o.KubeConfigPath)
+	hubKubeConfig, err := clientcmd.BuildConfigFromFlags("", o.HubKubeConfigPath)
 	if err != nil {
 		return err
 	}
 
-	kubeClient, err := kubernetes.NewForConfig(kubeConfig)
+	spokeKubeConfig, err := clientcmd.BuildConfigFromFlags("", o.SpokeKubeConfigPath)
 	if err != nil {
 		return err
 	}
 
-	for i := o.ClusterBeginIndex; i < o.ClusterCounts; i++ {
-		clusterName := util.ClusterName(i)
+	hubKubeClient, err := kubernetes.NewForConfig(hubKubeConfig)
+	if err != nil {
+		return err
+	}
+
+	spokeKubeClient, err := kubernetes.NewForConfig(spokeKubeConfig)
+	if err != nil {
+		return err
+	}
+
+	// prepare clusters
+	if err := o.PrepareClusters(ctx, hubKubeClient); err != nil {
+		return err
+	}
+
+	// start agents
+	utilruntime.Must(features.SpokeMutableFeatureGate.Add(ocmfeature.DefaultSpokeWorkFeatureGates))
+	utilruntime.Must(features.SpokeMutableFeatureGate.Set(fmt.Sprintf("%s=true", ocmfeature.RawFeedbackJsonString)))
+
+	index := o.ClusterBeginIndex
+	for i := 0; i < o.ClusterCounts; i++ {
+		clusterName := util.ClusterName(index)
 
 		if err := o.prepareAgentConfig(clusterName); err != nil {
 			return err
 		}
 
-		ns := &corev1.Namespace{}
-		ns.Name = clusterName
-		if _, err := kubeClient.CoreV1().Namespaces().Create(ctx, ns, metav1.CreateOptions{}); err != nil {
+		_, err := spokeKubeClient.CoreV1().Namespaces().Get(ctx, clusterName, metav1.GetOptions{})
+		switch {
+		case errors.IsNotFound(err):
+			if _, err := spokeKubeClient.CoreV1().Namespaces().Create(
+				ctx,
+				&corev1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: clusterName,
+					},
+				},
+				metav1.CreateOptions{},
+			); err != nil {
+				return err
+			}
+		case err != nil:
 			return err
 		}
 
@@ -99,10 +151,12 @@ func (o *SpokeOptions) Run(ctx context.Context) error {
 
 		go func() {
 			klog.Infof("Starting the work agent for cluster %s", clusterName)
-			if err := o.startWorkAgent(ctx, kubeConfig, clusterName); err != nil {
+			if err := o.startWorkAgent(ctx, spokeKubeConfig, clusterName); err != nil {
 				klog.Errorf("failed to start work agent for cluster %s, %v", clusterName, err)
 			}
 		}()
+
+		index = index + 1
 	}
 
 	return nil
@@ -130,7 +184,7 @@ func (o *SpokeOptions) prepareAgentConfig(clusterName string) error {
 		return err
 	}
 	keyBlock, _ := pem.Decode(keyFile)
-	caKey, err := x509.ParsePKCS1PrivateKey(keyBlock.Bytes)
+	caKey, err := x509.ParsePKCS8PrivateKey(keyBlock.Bytes)
 	if err != nil {
 		return err
 	}
@@ -183,11 +237,10 @@ func (o *SpokeOptions) prepareAgentConfig(clusterName string) error {
 	}
 
 	configData, err := yaml.Marshal(confluentkafka.ConfigMap{
-		"bootstrap.servers":        o.KafkaServer,
-		"security.protocol":        "ssl",
-		"ssl.ca.location":          o.KafkaClusterCAPath,
-		"ssl.certificate.location": filepath.Join(o.AgentConfigDir, fmt.Sprintf("client-%s.crt", clusterName)),
-		"ssl.key.location":         filepath.Join(o.AgentConfigDir, fmt.Sprintf("client-%s.key", clusterName)),
+		"bootstrapServer": o.KafkaServer,
+		"caFile":          o.KafkaClusterCAPath,
+		"clientCertFile":  filepath.Join(o.AgentConfigDir, fmt.Sprintf("client-%s.crt", clusterName)),
+		"clientKeyFile":   filepath.Join(o.AgentConfigDir, fmt.Sprintf("client-%s.key", clusterName)),
 	})
 	if err != nil {
 		return err
@@ -219,4 +272,76 @@ func (o *SpokeOptions) startWorkAgent(ctx context.Context, kubeConfig *rest.Conf
 		KubeConfig:    kubeConfig,
 		EventRecorder: events.NewInMemoryRecorder(clusterName),
 	})
+}
+
+func (o *SpokeOptions) PrepareClusters(ctx context.Context, kubeClient kubernetes.Interface) error {
+	name := fmt.Sprintf("clusters-%d-%d", o.ClusterBeginIndex, o.ClusterCounts)
+	if o.ClusterWithWorks {
+		name = fmt.Sprintf("clusters-with-works-%d-%d", o.ClusterBeginIndex, o.ClusterCounts)
+	}
+
+	_, err := kubeClient.BatchV1().Jobs("maestro").Get(ctx, name, metav1.GetOptions{})
+	switch {
+	case errors.IsNotFound(err):
+		data, err := ManifestFiles.ReadFile(jobFile)
+		if err != nil {
+			return err
+		}
+
+		raw, err := util.Render(
+			jobFile,
+			data,
+			&struct {
+				Name              string
+				Namespace         string
+				ClusterBeginIndex int
+				ClusterCounts     int
+				ClusterWithWorks  bool
+			}{
+				Name:              name,
+				Namespace:         o.MaestroNamespace,
+				ClusterBeginIndex: o.ClusterBeginIndex,
+				ClusterCounts:     o.ClusterCounts,
+				ClusterWithWorks:  o.ClusterWithWorks,
+			},
+		)
+		if err != nil {
+			return err
+		}
+
+		job := &batchv1.Job{}
+		if err := json.Unmarshal(raw, job); err != nil {
+			return err
+		}
+
+		_, err = kubeClient.BatchV1().Jobs("maestro").Create(ctx, job, metav1.CreateOptions{})
+		if err != nil {
+			return err
+		}
+	case err != nil:
+		return err
+	}
+
+	return util.Eventually(
+		func() error {
+			job, err := kubeClient.BatchV1().Jobs("maestro").Get(ctx, name, metav1.GetOptions{})
+			if err != nil {
+				return err
+			}
+
+			for _, cond := range job.Status.Conditions {
+				if cond.Type != batchv1.JobComplete {
+					continue
+				}
+
+				if cond.Status == corev1.ConditionTrue {
+					return nil
+				}
+			}
+
+			return fmt.Errorf("the job %s/%s is not completed", o.MaestroNamespace, name)
+		},
+		300*time.Second,
+		time.Second,
+	)
 }
