@@ -13,6 +13,7 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	confluentkafka "github.com/confluentinc/confluent-kafka-go/v2/kafka"
@@ -189,11 +190,14 @@ func (o *SpokeOptions) prepareAgentConfig(clusterName string) error {
 		return err
 	}
 
+	principal := helpers.ToKafkaPrincipal(clusterName)
+	principal = strings.TrimPrefix(principal, "User:CN=")
+
 	clientCertDERBytes, err := x509.CreateCertificate(
 		rand.Reader,
 		&x509.Certificate{
 			Subject: pkix.Name{
-				CommonName: helpers.ToKafkaPrincipal(clusterName),
+				CommonName: principal,
 			},
 			SerialNumber: big.NewInt(1),
 			NotBefore:    caCert.NotBefore,
