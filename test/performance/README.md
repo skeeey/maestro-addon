@@ -41,14 +41,26 @@ How many memory/cpu is consumed with NxM works?
 4. Deploy a Kafka cluster in `amq-streams` namespace with `kubectl -n amq-streams apply -f test/performance/hack/kafka/kafka-cr.yaml`
 5. Deploy a Maestro with `helm install maestro test/performance/hack/charts/maestro --set global.imageOverrides.maestroImage=quay.io/skeeey/maestro:latest`
 
-## Run Test
+## Run
+
+```
+begin_index=1 total=10 test/performance/hack/start-agents.sh
+begin_index=1 total=10 test/performance/hack/create-works.sh
+```
+
+### find logs
+```
+ll _output/performance/logs
+```
 
 
 ## Cleanup
 
 ```sh
+ls _output/performance/pids | xargs kill
 kind delete clusters --all
 kubectl -n amq-streams delete -f test/performance/hack/kafka/kafka-cr.yaml
+kubectl delete ns amq-streams
 helm uninstall maestro
 rm -rf _output/performance
 ```

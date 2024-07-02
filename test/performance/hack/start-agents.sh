@@ -9,7 +9,7 @@ begin_index=${begin_index:-1}
 cluster_with_works=${cluster_with_works:-"false"}
 
 # total number of agents created at one time
-counts=100
+counts=1
 
 # work dir
 crds_dir=${REPO_DIR}/test/performance/hack/crds
@@ -35,7 +35,7 @@ kubectl --kubeconfig ${HUB_KUBECONFIG} -n amq-streams get secrets kafka-clients-
 kubectl --kubeconfig ${HUB_KUBECONFIG} -n amq-streams get secrets kafka-clients-ca -ojsonpath="{.data.ca\.key}" | base64 -d > ${kafka_cert_dir}/clients-ca.key
 
 # prepare kind clusters
-kind_clusters=$(($total_agents/$counts))
+kind_clusters=$(($total/$counts))
 kind_index=0
 while ((kind_index<kind_clusters))
 do

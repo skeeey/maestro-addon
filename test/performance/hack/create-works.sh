@@ -2,17 +2,17 @@
 
 REPO_DIR="$(cd "$(dirname ${BASH_SOURCE[0]})/../../.." ; pwd -P)"
 
-total=${total:-1}
-index=${index:-1}
+total=${total:-100}
+begin_index=${begin_index:-1}
 
-last_index=(($index + $total - 1))
-echo "create works from maestro-cluster-$index to maestro-cluster-$last_index"
+lastIndex=$(($begin_index + $total - 1))
+echo "create works from maestro-cluster-$begin_index to maestro-cluster-$lastIndex"
 
 kubectl apply -f - <<EOF
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: works-$index-$last_index
+  name: works-$begin_index-$lastIndex
   namespace: maestro
 spec:
   template:
@@ -24,7 +24,7 @@ spec:
         args:
           - "/maestroperf"
           - "prepare"
-          - "--cluster-begin-index=$index"
+          - "--cluster-begin-index=$begin_index"
           - "--cluster-counts=$total"
           - "--only-works=true"
         volumeMounts:
