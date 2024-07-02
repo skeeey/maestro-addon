@@ -2,8 +2,6 @@
 
 REPO_DIR="$(cd "$(dirname ${BASH_SOURCE[0]})/../../.." ; pwd -P)"
 
-HUB_KUBECONFIG="/Users/liuwei/kubes/awsocp.kubeconfig"
-
 total=${total:-1}
 begin_index=${begin_index:-1}
 cluster_with_works=${cluster_with_works:-"false"}
@@ -29,10 +27,11 @@ mkdir -p ${pid_dir}
 echo "Start agents (start=$begin_index, total=$total) ..."
 
 # get kafka cluster host and certs
-kafka_host=$(kubectl --kubeconfig ${HUB_KUBECONFIG} -n amq-streams get route kafka-kafka-tls-bootstrap -ojsonpath='{.spec.host}')
-kubectl --kubeconfig ${HUB_KUBECONFIG} -n amq-streams get secrets kafka-cluster-ca-cert -ojsonpath="{.data.ca\.crt}" | base64 -d > ${kafka_cert_dir}/cluster-ca.crt
-kubectl --kubeconfig ${HUB_KUBECONFIG} -n amq-streams get secrets kafka-clients-ca-cert -ojsonpath="{.data.ca\.crt}" | base64 -d > ${kafka_cert_dir}/clients-ca.crt
-kubectl --kubeconfig ${HUB_KUBECONFIG} -n amq-streams get secrets kafka-clients-ca -ojsonpath="{.data.ca\.key}" | base64 -d > ${kafka_cert_dir}/clients-ca.key
+kafka_host=$(kubectl -n amq-streams get route kafka-kafka-tls-bootstrap -ojsonpath='{.spec.host}')
+kafka_host="${kafka_host}:443"
+kubectl -n amq-streams get secrets kafka-cluster-ca-cert -ojsonpath="{.data.ca\.crt}" | base64 -d > ${kafka_cert_dir}/cluster-ca.crt
+kubectl -n amq-streams get secrets kafka-clients-ca-cert -ojsonpath="{.data.ca\.crt}" | base64 -d > ${kafka_cert_dir}/clients-ca.crt
+kubectl -n amq-streams get secrets kafka-clients-ca -ojsonpath="{.data.ca\.key}" | base64 -d > ${kafka_cert_dir}/clients-ca.key
 
 # prepare kind clusters
 kind_clusters=$(($total/$counts))
@@ -60,7 +59,7 @@ do
     args="${args} --kafka-cluster-ca=${kafka_cert_dir}/cluster-ca.crt"
     args="${args} --kafka-client-ca=${kafka_cert_dir}/clients-ca.crt"
     args="${args} --kafka-client-ca-key=${kafka_cert_dir}/clients-ca.key"
-    args="${args} --hub-kubeconfig=${HUB_KUBECONFIG}"
+    args="${args} --hub-kubeconfig=${KUBECONFIG}"
     args="${args} --spoke-kubeconfig=${spoke_kube_dir}/test-${kind_index}.kubeconfig"
     args="${args} --cluster-begin-index=${index}"
     args="${args} --cluster-counts=${counts}"

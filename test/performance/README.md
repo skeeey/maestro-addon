@@ -37,13 +37,14 @@ How many memory/cpu is consumed with NxM works?
 
 1. An OCP cluster (TODO configurations)
 2. An AMQ Streams Operator is installed on the OCP cluster
-3. Create a namespace `amq-streams` in the OCP cluster
+3. Create a namespace `kubectl create ns amq-streams` in the OCP cluster
 4. Deploy a Kafka cluster in `amq-streams` namespace with `kubectl -n amq-streams apply -f test/performance/hack/kafka/kafka-cr.yaml`
 5. Deploy a Maestro with `helm install maestro test/performance/hack/charts/maestro --set global.imageOverrides.maestroImage=quay.io/skeeey/maestro:latest`
 
 ## Run
 
 ```
+export KUBECONFIG=<the ocp cluster kubeconfig>
 begin_index=1 total=10 test/performance/hack/start-agents.sh
 begin_index=1 total=10 test/performance/hack/create-works.sh
 ```
