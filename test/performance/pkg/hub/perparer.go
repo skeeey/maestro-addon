@@ -68,7 +68,7 @@ func (o *PreparerOptions) Run(ctx context.Context) error {
 	}
 
 	if o.OnlyWorks {
-		return o.CreateWorks(ctx, "work")
+		return o.CreateWorks(ctx, "runtime")
 	}
 
 	if err := o.PrepareClusters(ctx); err != nil {
@@ -124,7 +124,7 @@ func (o *PreparerOptions) PrepareClusters(ctx context.Context) error {
 	return nil
 }
 
-func (o *PreparerOptions) CreateWorks(ctx context.Context, workType string) error {
+func (o *PreparerOptions) CreateWorks(ctx context.Context, phase string) error {
 	creator, err := work.NewClientHolderBuilder(&grpc.GRPCOptions{URL: o.GRPCServiceAddress}).
 		WithClientID(fmt.Sprintf("%s-client", sourceID)).
 		WithSourceID(sourceID).
@@ -144,7 +144,7 @@ func (o *PreparerOptions) CreateWorks(ctx context.Context, workType string) erro
 	for i := 0; i < o.ClusterCounts; i++ {
 		clusterName := util.ClusterName(index)
 
-		works, err := workloads.ToManifestWorks(clusterName, workType)
+		works, err := workloads.ToManifestWorks(clusterName, phase)
 		if err != nil {
 			return err
 		}

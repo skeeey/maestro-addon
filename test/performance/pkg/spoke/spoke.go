@@ -262,6 +262,7 @@ func (o *SpokeOptions) startWorkAgent(ctx context.Context, kubeConfig *rest.Conf
 	agentOptions := spoke.NewWorkloadAgentOptions()
 	agentOptions.StatusSyncInterval = 3 * time.Second
 	agentOptions.AppliedManifestWorkEvictionGracePeriod = 5 * time.Second
+	agentOptions.MaxJSONRawLength = 1024 * 1024 // 1M
 	agentOptions.WorkloadSourceDriver = "kafka"
 	agentOptions.WorkloadSourceConfig = filepath.Join(o.AgentConfigDir, fmt.Sprintf("client-%s.config", clusterName))
 	agentOptions.CloudEventsClientID = fmt.Sprintf("%s-agent", clusterName)
@@ -275,9 +276,10 @@ func (o *SpokeOptions) startWorkAgent(ctx context.Context, kubeConfig *rest.Conf
 }
 
 func (o *SpokeOptions) PrepareClusters(ctx context.Context, kubeClient kubernetes.Interface) error {
-	name := fmt.Sprintf("clusters-%d-%d", o.ClusterBeginIndex, o.ClusterCounts)
+	lastIndex := o.ClusterBeginIndex + o.ClusterCounts - 1
+	name := fmt.Sprintf("clusters-%d-%d", o.ClusterBeginIndex, lastIndex)
 	if o.ClusterWithWorks {
-		name = fmt.Sprintf("clusters-with-works-%d-%d", o.ClusterBeginIndex, o.ClusterCounts)
+		name = fmt.Sprintf("clusters-with-works-%d-%d", o.ClusterBeginIndex, lastIndex)
 	}
 
 	_, err := kubeClient.BatchV1().Jobs("maestro").Get(ctx, name, metav1.GetOptions{})
