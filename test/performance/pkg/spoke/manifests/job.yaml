@@ -16,6 +16,7 @@ spec:
           - "--cluster-begin-index={{ .ClusterBeginIndex }}"
           - "--cluster-counts={{ .ClusterCounts }}"
           - "--cluster-with-works={{ .ClusterWithWorks }}"
+          - "--v=4"
         volumeMounts:
         - mountPath: "/configs/kafka"
           name: maestro-kafka-config

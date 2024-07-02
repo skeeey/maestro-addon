@@ -191,7 +191,7 @@ func (o *SpokeOptions) prepareAgentConfig(clusterName string) error {
 	}
 
 	principal := helpers.ToKafkaPrincipal(clusterName)
-	principal = strings.TrimPrefix(principal, "User:")
+	principal = strings.TrimPrefix(principal, "User:CN=")
 
 	clientCertDERBytes, err := x509.CreateCertificate(
 		rand.Reader,
