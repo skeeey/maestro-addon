@@ -18,11 +18,6 @@ make image
 
 ## Deploy
 
-### Prepare a Kafka cluster with AMQ Streams
-
-1. Follow this [doc](https://access.redhat.com/documentation/en-us/red_hat_amq_streams/2.6/html/deploying_and_managing_amq_streams_on_openshift/operator-hub-str#proc-deploying-cluster-operator-hub-str) to install the AMQ Streams Operator from OpenShift OperatorHub
-2. After the operator is installed, create a Kafka CR in one namespace to provision a Kafka cluster, the Kafka CR must enable the authorization with a super user `CN=maestro-kafka-admin` and a route listener with mTLS, There is an [example](contrib/examples/kafka-cr.yaml) for Kafka CR.
-
 ### Install maestro-addon on ACM hub
 
 Run following command to install maestro-addon on ACM hub
@@ -38,12 +33,17 @@ helm install maestro-addon ./charts/maestro-addon
   --set global.imageOverrides.maestroAddOnImage=<your customized image>
   ```
 
-- To specify the AMQ Streams Kafka cluster name and namespace (by default, they are `kafka` and `amq-streams`):
+- (Optional) To use AMQ Streams Kafka as the events broker
 
-  ```
-  --set messageQueue.amqStreams.name=<your AMQ Streams Kafka CR name>
-  --set messageQueue.amqStreams.namespace=<your AMQ Streams Kafka CR namespace>
-  ```
+  1. Follow this [doc](https://access.redhat.com/documentation/en-us/red_hat_amq_streams/2.6/html/deploying_and_managing_amq_streams_on_openshift/operator-hub-str#proc-deploying-cluster-operator-hub-str) to install the AMQ Streams Operator from OpenShift OperatorHub
+  2. After the operator is installed, create a Kafka CR in one namespace to provision a Kafka cluster, the Kafka CR must enable the authorization with a super user `CN=maestro-kafka-admin` and a route listener with mTLS, There is an [example](contrib/examples/kafka-cr.yaml) for Kafka CR.
+  3. Specify the AMQ Streams Kafka cluster name and namespace:
+
+      ```
+      --set maestro.broker=kafka
+      --set messageQueue.amqStreams.name=<your AMQ Streams Kafka CR name, by default is kafka>
+      --set messageQueue.amqStreams.namespace=<your AMQ Streams Kafka CR namespace, by default is amq-streams>
+      ```
 
 More available config values can be found from [here](charts/maestro-addon/values.yaml).
 
@@ -123,4 +123,3 @@ busybox   AsExpected   True    AsExpected      True
 ```
 
 Using `oc delete -f contrib/examples/manifestworkreplicaset.yaml` to delete the ManifestWorkReplicaSet
-

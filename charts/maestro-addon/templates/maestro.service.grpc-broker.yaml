@@ -1,0 +1,15 @@
+{{- if eq .Values.maestro.broker "grpc" }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: maestro-grpc-broker
+  namespace: '{{ .Values.global.namespace }}'
+spec:
+  ports:
+  - name: grpc-broker
+    port: 8091
+    protocol: TCP
+    targetPort: 8091
+  selector:
+    app: maestro
+{{- end }}

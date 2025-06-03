@@ -4,9 +4,9 @@
 
 global:
   imageOverrides:
-    maestroImage: quay.io/redhat-user-workloads/crt-redhat-acm-tenant/maestro-main/maestro-main:28c3d6c8ed8aabd5bb4db7d7d838d1e11d5f5474
-    maestroAddOnImage: quay.io/redhat-user-workloads/crt-redhat-acm-tenant/maestro-main/maestro-addon-main:35cd9ffc0bc567bb52211f6b6112d25e4a0cc48a
-    postgresImage: docker.io/library/postgres:17.2
+    maestroImage: quay.io/redhat-user-workloads/crt-redhat-acm-tenant/maestro-main/maestro-main:8c93e2e652a317c7335665a7022a325e9efb58fe
+    maestroAddOnImage: quay.io/skeeey/maestro-addon:latest
+    postgresImage: quay.io/maestro/postgres:17.2
   imagePullPolicy: IfNotPresent
   pullSecret: ""
   namespace: maestro
@@ -14,6 +14,7 @@ global:
 maestro:
   replicas: 1
   logLevel: 2
+  broker: grpc # kafka
 
 maestroAgent:
   logLevel: 2
@@ -26,6 +27,7 @@ maestroAddOn:
 
 database:
   useExternalDB: false
+  storage: 1Gi
 
 messageQueue:
   amqStreams:
@@ -34,3 +36,5 @@ messageQueue:
     listener:
       type: "route"
       port: 443
+  grpc:
+    type: "route"
