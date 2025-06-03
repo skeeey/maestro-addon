@@ -1,0 +1,16 @@
+{{- if and (eq .Values.maestro.broker "grpc") (eq .Values.messageQueue.grpc.type "route") }}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: maestro-grpc-broker
+  namespace: '{{ .Values.global.namespace }}'
+spec:
+  to:
+    kind: Service
+    name: maestro-grpc-broker
+  port:
+    targetPort: grpc-broker
+  tls:
+    termination: passthrough
+    insecureEdgeTerminationPolicy: None
+{{- end }}

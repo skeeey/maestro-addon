@@ -1,4 +1,4 @@
-FROM registry.ci.openshift.org/stolostron/builder:go1.22-linux AS builder
+FROM registry.ci.openshift.org/stolostron/builder:go1.23-linux AS builder
 
 ARG OS=linux
 ARG ARCH=amd64

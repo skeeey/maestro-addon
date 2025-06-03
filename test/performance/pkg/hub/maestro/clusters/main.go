@@ -34,7 +34,7 @@ func main() {
 		}
 
 		fmt.Printf("cluster %s is created, time=%dms\n", clusterName, util.UsedTime(startTime, time.Millisecond))
-		index = index + 1
+		index++
 	}
 	fmt.Printf("Clusters (%d) are created, time=%dms\n", *counts, util.UsedTime(startTime, time.Millisecond))
 }

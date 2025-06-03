@@ -27,7 +27,7 @@ type ManagedClusterController struct {
 	clusterLister            clusterlisters.ManagedClusterLister
 	maestroAPIClient         *openapi.APIClient
 	messageQueueAuthzCreator mq.MessageQueueAuthzCreator
-	rateLimiter              workqueue.RateLimiter
+	rateLimiter              workqueue.TypedRateLimiter[string]
 }
 
 func NewManagedClusterController(maestroServiceAddress string,
@@ -38,7 +38,7 @@ func NewManagedClusterController(maestroServiceAddress string,
 		clusterLister:            clusterInformer.Lister(),
 		maestroAPIClient:         helpers.NewMaestroAPIClient(maestroServiceAddress),
 		messageQueueAuthzCreator: messageQueueAuthzCreator,
-		rateLimiter:              workqueue.NewItemExponentialFailureRateLimiter(5*time.Second, 300*time.Second),
+		rateLimiter:              workqueue.NewTypedItemExponentialFailureRateLimiter[string](5*time.Second, 300*time.Second),
 	}
 
 	return factory.New().

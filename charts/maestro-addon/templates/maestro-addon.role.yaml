@@ -1,5 +1,3 @@
-# Mandatory Role permission for work agent
-# Work agent can not run without these permissions
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:

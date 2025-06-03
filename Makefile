@@ -6,11 +6,10 @@ IMAGE_REGISTRY?=quay.io/stolostron
 IMAGE_TAG?=latest
 IMAGE_NAME?=$(IMAGE_REGISTRY)/maestro-addon:$(IMAGE_TAG)
 
-GOLANGCI_LINT_VERSION=v1.54.1
+GOLANGCI_LINT_VERSION=v2.1.6
 
 verify:
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
-	go vet ./...
+	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
 	golangci-lint run --timeout=3m ./...
 .PHONY: verify
 

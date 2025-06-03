@@ -4,15 +4,15 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"gopkg.in/yaml.v2"
 	"k8s.io/klog/v2"
 
+	"github.com/stolostron/maestro-addon/pkg/common"
 	"github.com/stolostron/maestro-addon/pkg/helpers"
 )
-
-const MessageQueueKafka = "kafka"
 
 const sourceID = "maestro"
 
@@ -23,7 +23,7 @@ type MessageQueueAuthzCreator interface {
 
 func NewMessageQueueAuthzCreator(mqType, mqConfigPath string) (MessageQueueAuthzCreator, error) {
 	switch mqType {
-	case MessageQueueKafka:
+	case common.BrokerKafka:
 		config, err := ToKafkaConfigMap(mqConfigPath)
 		if err != nil {
 			return nil, err
@@ -34,6 +34,8 @@ func NewMessageQueueAuthzCreator(mqType, mqConfigPath string) (MessageQueueAuthz
 		}
 
 		return &KafkaAuthzCreator{config: config}, nil
+	case common.BrokerGRPC:
+		return &DumbAuthzCreator{}, nil
 	default:
 		klog.Warningf("unsupported message queue driver: %s, will not create message queue authorizations", mqType)
 		return nil, nil
@@ -53,7 +55,7 @@ type KafkaConfig struct {
 }
 
 func ToKafkaConfigMap(configPath string) (*kafka.ConfigMap, error) {
-	configData, err := os.ReadFile(configPath)
+	configData, err := os.ReadFile(filepath.Clean(configPath))
 	if err != nil {
 		return nil, err
 	}
@@ -87,6 +89,16 @@ func ToKafkaConfigMap(configPath string) (*kafka.ConfigMap, error) {
 	}
 
 	return configMap, nil
+}
+
+type DumbAuthzCreator struct{}
+
+func (d *DumbAuthzCreator) CreateAuthorizations(ctx context.Context, clusterName string) error {
+	return nil
+}
+
+func (d *DumbAuthzCreator) DeleteAuthorizations(ctx context.Context, clusterName string) error {
+	return nil
 }
 
 type KafkaAuthzCreator struct {

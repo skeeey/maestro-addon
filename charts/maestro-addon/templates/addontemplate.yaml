@@ -1,4 +1,6 @@
-{{- $clusterCA := (lookup "v1" "Secret" .Values.messageQueue.amqStreams.namespace (printf "%s-cluster-ca-cert" .Values.messageQueue.amqStreams.name)) -}}
+{{- $gRPCCerts := include "genGRPCServingCerts" . | fromYaml }}
+
+---
 
 apiVersion: addon.open-cluster-management.io/v1alpha1
 kind: AddOnTemplate
@@ -61,8 +63,8 @@ spec:
                 - /usr/local/bin/maestro
                 - agent
                 - --consumer-name={{`{{CLUSTER_NAME}}`}}
-                - --workload-source-driver=kafka
-                - --workload-source-config=/spoke/configs/kafka-config.yaml
+                - --workload-source-driver={{ .Values.maestro.broker }}
+                - --workload-source-config=/spoke/configs/config.yaml
                 - --cloudevents-client-id={{`{{CLUSTER_NAME}}`}}-work-agent
                 - --cloudevents-client-codecs=manifestbundle
                 - --v={{ .Values.maestroAgent.logLevel }}
@@ -103,7 +105,7 @@ spec:
                 terminationMessagePolicy: File
                 volumeMounts:
                 - mountPath: /spoke/configs
-                  name: maestro-addon-kafka-config
+                  name: maestro-addon-config
                 - mountPath: /spoke/certs
                   name: maestro-mq-ca
                 - mountPath: /tmp
@@ -115,9 +117,9 @@ spec:
               serviceAccountName: klusterlet-work-sa
               terminationGracePeriodSeconds: 30
               volumes:
-              - name: maestro-addon-kafka-config
+              - name: maestro-addon-config
                 configMap:
-                  name: maestro-addon-kafka-config
+                  name: maestro-addon-config
               - name: maestro-mq-ca
                 secret:
                   secretName: maestro-mq-ca
@@ -126,15 +128,26 @@ spec:
       - apiVersion: v1
         kind: ConfigMap
         metadata:
-          name: maestro-addon-kafka-config
+          name: maestro-addon-config
           namespace: open-cluster-management-agent
         data:
-          kafka-config.yaml: |-
+          config.yaml: |-
+{{- if eq .Values.maestro.broker "kafka" }}
 {{- if eq .Values.messageQueue.amqStreams.listener.type "route" }}
             bootstrapServer: {{- indent 1 (printf "%s:443" (lookup "route.openshift.io/v1" "Route" .Values.messageQueue.amqStreams.namespace (printf "%s-kafka-tls-bootstrap" .Values.messageQueue.amqStreams.name)).spec.host) }}
 {{- end }}
 {{- if eq .Values.messageQueue.amqStreams.listener.type "internal" }}
             bootstrapServer: {{- indent 1 (printf "kafka-kafka-bootstrap.%s:%d" .Values.messageQueue.amqStreams.namespace .Values.messageQueue.amqStreams.listener.port) }}
+{{- end }}
+{{- end }}
+{{- if eq .Values.maestro.broker "grpc" }}
+{{- if eq .Values.messageQueue.grpc.type "route" }}
+{{- $baseDomain := (lookup "config.openshift.io/v1" "DNS" "" "cluster").spec.baseDomain }}
+            url: {{- indent 1 (printf "maestro-grpc-broker-%s.apps.%s:443" .Values.global.namespace $baseDomain) }}
+{{- end }}
+{{- if eq .Values.messageQueue.grpc.type "internal" }}
+            url: {{- indent 1 (printf "maestro-grpc-broker.%s:8091" .Values.global.namespace) }}
+{{- end }}
 {{- end }}
             caFile: /spoke/certs/ca.crt
             clientCertFile: /managed/open-cluster-management.io-maestro-addon/tls.crt
@@ -145,14 +158,62 @@ spec:
           name: maestro-mq-ca
           namespace: open-cluster-management-agent
         data:
+{{- if eq .Values.maestro.broker "kafka" }}
+{{- $clusterCA := (lookup "v1" "Secret" .Values.messageQueue.amqStreams.namespace (printf "%s-cluster-ca-cert" .Values.messageQueue.amqStreams.name)) -}}
 {{- range $key, $value := $clusterCA.data }}
   {{- if eq $key "ca.crt" }}
           ca.crt: {{ $value }}
   {{- end }}
+{{- end }}
+{{- end }}
+{{- if eq .Values.maestro.broker "grpc" }}
+          ca.crt: {{ $gRPCCerts.ca }}
 {{- end }}
   registration:
   - type: CustomSigner
     customSigner:
       signerName: open-cluster-management.io/maestro-addon
       signingCA:
-        name: maestro-mq-certs
+        name: maestro-signer
+
+---
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: maestro-signer
+  namespace: '{{ .Values.addOnManager.namespace }}'
+type: kubernetes.io/tls
+data:
+{{- if eq .Values.maestro.broker "kafka" }}
+{{- $clientCACert := (lookup "v1" "Secret" .Values.messageQueue.amqStreams.namespace (printf "%s-clients-ca-cert" .Values.messageQueue.amqStreams.name)) -}}
+{{- $clientCAKey := (lookup "v1" "Secret" .Values.messageQueue.amqStreams.namespace (printf "%s-clients-ca" .Values.messageQueue.amqStreams.name)) -}}
+{{- range $key, $value := $clientCACert.data }}
+  {{- if eq $key "ca.crt" }}
+  tls.crt: {{ $value }}
+  {{- end }}
+{{- end }}
+{{- range $key, $value := $clientCAKey.data }}
+  {{- if eq $key "ca.key" }}
+  tls.key: {{ $value }}
+  {{- end }}
+{{- end }}
+{{- end }}
+{{- if eq .Values.maestro.broker "grpc" }}
+  tls.crt: {{ $gRPCCerts.ca }}
+  tls.key: {{ $gRPCCerts.caKey}}
+{{- end }}
+
+---
+
+{{- if eq .Values.maestro.broker "grpc" }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: grpc-broker-certs
+  namespace: '{{ .Values.global.namespace }}'
+data:
+  ca.crt: {{ $gRPCCerts.ca }}
+  server.crt: {{ $gRPCCerts.serverCert }}
+  server.key: {{ $gRPCCerts.serverCertKey }}
+{{- end }}

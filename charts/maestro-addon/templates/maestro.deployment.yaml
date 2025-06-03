@@ -26,8 +26,10 @@ spec:
         - "/usr/local/bin/maestro"
         - server
         - "--client-id=maestro-$(POD_NAME)"
-        - "--message-broker-type=kafka"
+        - "--message-broker-type={{ .Values.maestro.broker }}"
+{{- if eq .Values.maestro.broker "kafka" }}
         - "--message-broker-config-file=/secrets/mq/kafka/config.yaml"
+{{- end }}
         - "--db-host-file=/secrets/rds/host"
         - "--db-port-file=/secrets/rds/port"
         - "--db-user-file=/secrets/rds/user"
@@ -44,7 +46,12 @@ spec:
         - "--http-write-timeout=30s"
         - "--enable-grpc-server=true"
         - "--grpc-server-bindport=8090"
-        - "--disable-grpc-tls"
+{{- if eq .Values.maestro.broker "grpc" }}
+        - "--grpc-broker-bindport=8091"
+        - "--grpc-broker-client-ca-file=/secrets/certs/grpc-broker/ca.crt"
+        - "--grpc-broker-tls-cert-file=/secrets/certs/grpc-broker/server.crt"
+        - "--grpc-broker-tls-key-file=/secrets/certs/grpc-broker/server.key"
+{{- end }}
         - "--alsologtostderr"
         - "-v={{ .Values.maestro.logLevel }}"
         env:
@@ -89,10 +96,16 @@ spec:
         volumeMounts:
         - mountPath: "/secrets/rds"
           name: maestro-db-config
+{{- if eq .Values.maestro.broker "grpc" }}
+        - mountPath: "/secrets/certs/grpc-broker"
+          name: grpc-broker-certs
+{{- end }}
+{{- if eq .Values.maestro.broker "kafka" }}
         - mountPath: "/secrets/certs/kafka"
           name: kafka-client-certs
         - mountPath: "/secrets/mq/kafka"
           name: maestro-kafka-config
+{{- end }}
       initContainers:
       - command:
         - "/usr/local/bin/maestro"
@@ -115,9 +128,16 @@ spec:
       - name: maestro-db-config
         secret:
           secretName: maestro-db-config
+{{- if eq .Values.maestro.broker "kafka" }}
       - name: maestro-kafka-config
         secret:
           secretName: maestro-kafka-config
       - name: kafka-client-certs
         secret:
           secretName: kafka-client-certs
+{{- end }}
+{{- if eq .Values.maestro.broker "grpc" }}
+      - name: grpc-broker-certs
+        secret:
+          secretName: grpc-broker-certs
+{{- end }}
