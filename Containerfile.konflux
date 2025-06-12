@@ -5,13 +5,11 @@ WORKDIR $SOURCE_DIR
 COPY . $SOURCE_DIR
 
 ENV GOFLAGS=""
-RUN GOOS=${OS} GOARCH=${ARCH} make build --warn-undefined-variables
+RUN GOOS=${OS} GOARCH=${ARCH} make build -mod=readonly --warn-undefined-variables
 RUN pwd
 
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
 ENV USER_UID=10001
-
-RUN microdnf update -y && microdnf install -y util-linux && microdnf clean all
 
 COPY --from=builder /maestro-addon/maestroaddon /usr/local/bin/
 
