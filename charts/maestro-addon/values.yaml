@@ -5,7 +5,7 @@
 global:
   imageOverrides:
     maestroImage: quay.io/redhat-user-workloads/crt-redhat-acm-tenant/maestro-main/maestro-main:8c93e2e652a317c7335665a7022a325e9efb58fe
-    maestroAddOnImage: quay.io/skeeey/maestro-addon:latest
+    maestroAddOnImage: quay.io/redhat-user-workloads/crt-redhat-acm-tenant/maestro-main/maestro-addon-main:18c038de3026393c6de2291c0b16055b2f11c1bf
     postgresImage: quay.io/maestro/postgres:17.2
   imagePullPolicy: IfNotPresent
   pullSecret: ""
