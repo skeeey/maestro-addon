@@ -9,6 +9,8 @@ function wait_command() {
   ((++wait_seconds))
 }
 
+broker_type=${BROKE_TYPE:-"kafka"}
+
 latest_img_tag=$(curl -s -X GET "${IMG_REPO}" | jq -s -c -r 'sort_by(.tags[].last_modified) | .[].tags[].name' | grep -E '^[a-z0-9]{40}$' | head -n 1)
 
 maestro_image=${MAESTRO_IMAGE_NAME:-"quay.io/redhat-user-workloads/crt-redhat-acm-tenant/maestro-main/maestro-main:${latest_img_tag}"}
@@ -21,7 +23,8 @@ kind_cluster="maestro-addon-e2e-test"
 
 cluster="loopback"
 
-ocm_version="latest"
+ocm_version="v0.15.0"
+strimzi_version="0.44.0"
 
 output="${REPO_DIR}/_output"
 tools_dir="${output}/tools"
@@ -44,13 +47,17 @@ ${kind} load docker-image --name=${kind_cluster} ${maestro_addon_image}
 
 export KUBECONFIG=${kube_config}
 
-echo "=== Prepare Kafaka cluster"
-${kubectl} create namespace strimzi
-${kubectl} -n strimzi create -f 'https://strimzi.io/install/latest?namespace=strimzi'
-wait_command "${kubectl} -n strimzi get deploy strimzi-cluster-operator"
-${kubectl} -n strimzi wait deploy/strimzi-cluster-operator --for=condition=Available --timeout=300s
-${kubectl} -n strimzi create -f ${REPO_DIR}/test/e2e/hack/manifests/kafka.yaml
-${kubectl} -n strimzi wait kafka/kafka --for=condition=Ready --timeout=300s
+if [ $broker_type = "kafka" ]; then
+  echo "=== Prepare Kafka cluster"
+  wget -O $output/strimzi-cluster-operator-${strimzi_version}.yaml https://github.com/strimzi/strimzi-kafka-operator/releases/download/${strimzi_version}/strimzi-cluster-operator-${strimzi_version}.yaml
+  sed -i 's/myproject/strimzi/' $output/strimzi-cluster-operator-${strimzi_version}.yaml
+  ${kubectl} create namespace strimzi
+  ${kubectl} -n strimzi create -f $output/strimzi-cluster-operator-${strimzi_version}.yaml
+  wait_command "${kubectl} -n strimzi get deploy strimzi-cluster-operator"
+  ${kubectl} -n strimzi wait deploy/strimzi-cluster-operator --for=condition=Available --timeout=300s
+  ${kubectl} -n strimzi create -f ${REPO_DIR}/test/e2e/hack/manifests/kafka.yaml
+  ${kubectl} -n strimzi wait kafka/kafka --for=condition=Ready --timeout=300s
+fi
 
 echo "=== Prepare OCM hub"
 ${clusteradm} init --wait --bundle-version="${ocm_version}" \
@@ -59,8 +66,10 @@ ${clusteradm} init --wait --bundle-version="${ocm_version}" \
 
 echo "=== Deploy Maestro AddOn on the hub"
 ${helm} install maestro-addon charts/maestro-addon \
+  --set maestro.broker=${broker_type} \
   --set global.imageOverrides.maestroImage=${maestro_image} \
   --set global.imageOverrides.maestroAddOnImage=${maestro_addon_image} \
+  --set messageQueue.grpc.type=internal \
   --set messageQueue.amqStreams.namespace=strimzi \
   --set messageQueue.amqStreams.listener.type=internal \
   --set messageQueue.amqStreams.listener.port=9093
@@ -75,7 +84,7 @@ echo "=== Deploy Maestro Agent with ManagedClusterAddOn on the managed cluster"
 ${kubectl} -n ${cluster} apply -f ${REPO_DIR}/test/e2e/hack/manifests/managedclusteraddon.yaml
 ${kubectl} -n ${cluster} wait managedclusteraddons/maestro-addon --for=condition=Available --timeout=300s
 
-echo "=== Enable manifestworkreplicaset controller on the hub"
+echo "=== Enable ManifestWorkReplicaSet controller on the hub"
 ${kubectl} -n open-cluster-management create -f ${REPO_DIR}/test/e2e/hack/manifests/work-driver-config.secret.yaml
 ${kubectl} patch clustermanager cluster-manager -p='{"spec":{"workConfiguration":{"workDriver":"grpc"}}}' --type=merge
 ${kubectl} -n open-cluster-management-hub wait deploy/cluster-manager-work-controller --for=jsonpath='{.status.replicas}'=2 --timeout=300s

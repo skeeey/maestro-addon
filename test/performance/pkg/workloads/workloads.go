@@ -3,7 +3,6 @@ package workloads
 import (
 	"bytes"
 	"embed"
-	"encoding/json"
 	"fmt"
 	"html/template"
 
@@ -15,8 +14,6 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	workv1 "open-cluster-management.io/api/work/v1"
 )
-
-const worksFile = "manifests/acm/cluster.manifestworks.json"
 
 var guestbook = []string{
 	"manifests/guestbook/namespace.yaml",
@@ -41,26 +38,6 @@ func init() {
 
 //go:embed manifests
 var ManifestFiles embed.FS
-
-func ToACMManifestWorks() (map[string]*workv1.ManifestWork, error) {
-	data, err := ManifestFiles.ReadFile(worksFile)
-	if err != nil {
-		return nil, err
-	}
-
-	list := workv1.ManifestWorkList{}
-	if err := json.Unmarshal(data, &list); err != nil {
-		return nil, err
-	}
-
-	works := map[string]*workv1.ManifestWork{}
-	for i := range list.Items {
-		work := list.Items[i]
-		works[work.Name] = &work
-	}
-
-	return works, nil
-}
 
 func CopyWork(batch int, work *workv1.ManifestWork) *workv1.ManifestWork {
 	newWork := &workv1.ManifestWork{

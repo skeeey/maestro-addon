@@ -9,6 +9,7 @@ import (
 	clusterclientset "open-cluster-management.io/api/client/cluster/clientset/versioned"
 	clusterinformers "open-cluster-management.io/api/client/cluster/informers/externalversions"
 
+	"github.com/stolostron/maestro-addon/pkg/common"
 	"github.com/stolostron/maestro-addon/pkg/hub/controllers"
 	"github.com/stolostron/maestro-addon/pkg/mq"
 )
@@ -24,7 +25,7 @@ type MaestroAddOnManagerOptions struct {
 func NewMaestroAddOnManagerOptions() *MaestroAddOnManagerOptions {
 	return &MaestroAddOnManagerOptions{
 		maestroServiceAddress:        defaultMaestroServiceAddress,
-		messageQueueBrokerType:       mq.MessageQueueKafka,
+		messageQueueBrokerType:       common.BrokerKafka,
 		messageQueueBrokerConfigPath: "/configs/kafka/config.yaml",
 	}
 }
@@ -38,7 +39,8 @@ func (o *MaestroAddOnManagerOptions) AddFlags(fs *pflag.FlagSet) {
 		"Path to the message queue broker configuration file")
 }
 
-func (o *MaestroAddOnManagerOptions) RunHubManager(ctx context.Context, controllerContext *controllercmd.ControllerContext) error {
+func (o *MaestroAddOnManagerOptions) RunHubManager(
+	ctx context.Context, controllerContext *controllercmd.ControllerContext) error {
 	clusterClient, err := clusterclientset.NewForConfig(controllerContext.KubeConfig)
 	if err != nil {
 		return err

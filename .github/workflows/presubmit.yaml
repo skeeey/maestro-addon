@@ -54,8 +54,8 @@ jobs:
       - name: unit
         run: make test
 
-  e2e:
-    name: e2e
+  e2e-kafka:
+    name: e2e-kafka
     runs-on: ubuntu-latest
     steps:
       - name: checkout code
@@ -76,4 +76,29 @@ jobs:
       - name: e2e
         run: make e2e-test
         env:
+          IMAGE_NAME: quay.io/stolostron/maestro-addon:${{ steps.vars.outputs.label }}
+
+  e2e-grpc:
+    name: e2e-grpc
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v4
+      - name: install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: set image label
+        id: vars
+        run: |
+          echo "::set-output name=label::$(git rev-parse --short ${{ github.sha }})"
+      - name: build image
+        run: make image
+        env:
+          container_tool: docker
+          IMAGE_NAME: quay.io/stolostron/maestro-addon:${{ steps.vars.outputs.label }}
+      - name: e2e
+        run: make e2e-test
+        env:
+          BROKE_TYPE: grpc
           IMAGE_NAME: quay.io/stolostron/maestro-addon:${{ steps.vars.outputs.label }}

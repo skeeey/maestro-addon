@@ -6,3 +6,8 @@ const (
 	MessageQueueCertsSecretName = "maestro-mq-certs" // #nosec G101
 	MessageQueueCAKey           = "ca.crt"
 )
+
+const (
+	BrokerKafka = "kafka"
+	BrokerGRPC  = "grpc"
+)

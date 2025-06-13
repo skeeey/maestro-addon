@@ -22,6 +22,7 @@ spec:
           - "/usr/local/bin/maestroaddon"
           - "manager"
           - "--disable-leader-election"
+          - "--message-queue-broker-type={{ .Values.maestro.broker }}"
           - "--v={{ .Values.maestroAddOn.logLevel }}"
         securityContext:
           allowPrivilegeEscalation: false
@@ -33,16 +34,20 @@ spec:
         volumeMounts:
         - mountPath: /tmp
           name: tmpdir
+{{- if eq .Values.maestro.broker "kafka" }}
         - mountPath: "/configs/kafka"
           name: maestro-kafka-config
         - mountPath: "/secrets/certs/kafka"
           name: kafka-client-certs
+{{- end }}
       volumes:
       - emptyDir: {}
         name: tmpdir
+{{- if eq .Values.maestro.broker "kafka" }}
       - name: maestro-kafka-config
         secret:
           secretName: maestro-kafka-config
       - name: kafka-client-certs
         secret:
           secretName: kafka-client-certs
+{{- end }}

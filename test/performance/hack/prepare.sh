@@ -24,7 +24,7 @@ kubectl -n amq-streams annotate route kafka-kafka-tls-bootstrap haproxy.router.o
 
 sleep 60
 
-helm install maestro ${REPO_DIR}/charts/maestro-addon
+helm install maestro ${REPO_DIR}/charts/maestro-addon --set maestro.broker="kafka"
 kubectl -n maestro wait deploy/maestro-db --for=condition=Available --timeout=300s
 kubectl -n maestro wait deploy/maestro --for=condition=Available --timeout=300s
 
@@ -50,7 +50,7 @@ echo "$kafka_host"
 echo "$work_dir"
 
 pushd ${REPO_DIR}/test/performance
-go run pkg/hub/maestro/topics/main.go --work-dir=${work_dir} --kafka-server=${kafka_host} > topics.log 2>topics.err.log
+go run pkg/hub/maestro/configs/main.go --work-dir=${work_dir} --server=${kafka_host} --broker=kafka > configs.log 2>configs.err.log
 popd
 
 nohup kubectl port-forward svc/maestro 8000 -n maestro > maestro.svc.log 2>&1 &
@@ -64,7 +64,7 @@ popd
 db_pod_name=$(kubectl -n maestro get pods -l name=maestro-db -ojsonpath='{.items[0].metadata.name}')
 kubectl -n maestro exec ${db_pod_name} -- psql -d maestro -U maestro -c 'select count(*) from consumers'
 
-echo "run go run -tags=kafka pkg/spoke/application/main.go --work-dir=$work_dir --cluster-begin-index=1 > agent-100.log 2>agent-100.err.log &"
+echo "run go run -tags=kafka pkg/spoke/main.go --broker=kafka --work-dir=$work_dir --cluster-begin-index=1 > agent-100.log 2>agent-100.err.log &"
 
 echo "run kubectl port-forward svc/maestro-grpc 8090 -n maestro"
-echo "run go run pkg/hub/maestro/works/application/main.go --cluster-begin-index=1"
+echo "run go run pkg/hub/maestro/works/main.go --cluster-begin-index=1"

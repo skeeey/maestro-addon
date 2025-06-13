@@ -15,6 +15,13 @@ import (
 )
 
 func main() {
+	if err := execute(); err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
+	}
+}
+
+func execute() error {
 	pflag.CommandLine.SetNormalizeFunc(utilflag.WordSepNormalizeFunc)
 	pflag.CommandLine.AddGoFlagSet(goflag.CommandLine)
 
@@ -22,14 +29,11 @@ func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
-	command := newWorkCommand()
-	if err := command.Execute(); err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
+	command := newCommand()
+	return command.Execute()
 }
 
-func newWorkCommand() *cobra.Command {
+func newCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "maestroaddon",
 		Short: "Maestro AddOn",
